@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      climate_suggestions: {
+        Row: {
+          area_sqm: number
+          city: string
+          created_at: string
+          id: string
+          result: Json
+          room_type: string
+          style: string
+          user_id: string
+          weather: Json
+        }
+        Insert: {
+          area_sqm: number
+          city: string
+          created_at?: string
+          id?: string
+          result?: Json
+          room_type: string
+          style: string
+          user_id: string
+          weather?: Json
+        }
+        Update: {
+          area_sqm?: number
+          city?: string
+          created_at?: string
+          id?: string
+          result?: Json
+          room_type?: string
+          style?: string
+          user_id?: string
+          weather?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
