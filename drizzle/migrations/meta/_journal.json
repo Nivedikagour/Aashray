@@ -8,6 +8,13 @@
       "when": 1791914370740,
       "tag": "0000_create_climate_suggestions",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792174393899,
+      "tag": "0001_create_construction_analyses",
+      "breakpoints": true
     }
   ]
 }
