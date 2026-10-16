@@ -134,12 +134,13 @@ function Studio() {
   </div>;
 }
 
-function Chip({ children, tone }: { children: React.ReactNode; tone?: 'warn' | 'danger' }) {
+function Chip({ children, tone }: { children: React.ReactNode; tone?: 'warn' | 'danger' | undefined }) {
   return <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${tone === 'danger' ? 'bg-destructive/10 text-destructive' : tone === 'warn' ? 'bg-clay/15 text-clay' : 'bg-sage-soft text-primary'}`}>{children}</span>;
 }
 
 function Result({ tool, title, input, result }: { tool: string; title: string; input: Record<string, unknown>; result: Record<string, unknown> }) {
-  const r = result as never;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = result as any;
   const w = input.weather as Weather | null;
   return <article className="rounded-xl border border-border bg-card p-6">
     <div className="flex flex-wrap items-center gap-2">
