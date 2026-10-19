@@ -124,18 +124,18 @@ async function callAI(tool: ToolId, userContent: ContentPart[]): Promise<Record<
 
 export type AnalysisInput = {
   tool: ToolId;
-  image?: string; // data URL
-  notes?: string;
-  city?: string;
-  propertyType?: string;
-  areaSqft?: number;
-  ageYears?: number;
-  projectType?: string;
-  areaSqm?: number;
-  budgetInr?: number;
-  months?: number;
-  work?: string;
-  question?: string;
+  image?: string | undefined; // data URL
+  notes?: string | undefined;
+  city?: string | undefined;
+  propertyType?: string | undefined;
+  areaSqft?: number | undefined;
+  ageYears?: number | undefined;
+  projectType?: string | undefined;
+  areaSqm?: number | undefined;
+  budgetInr?: number | undefined;
+  months?: number | undefined;
+  work?: string | undefined;
+  question?: string | undefined;
 };
 
 export async function runAnalysis(input: AnalysisInput): Promise<{ title: string; result: Record<string, unknown>; weather?: Weather }> {
