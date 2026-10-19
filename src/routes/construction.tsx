@@ -59,7 +59,7 @@ function Studio() {
   const [err, setErr] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const [image, setImage] = useState('');
-  const [f, setF] = useState<Record<string, string>>({ notes: '', city: 'Mumbai', propertyType: 'Apartment', areaSqft: '1000', ageYears: '5', projectType: 'Residential G+2 house', areaSqm: '150', budgetInr: '6000000', months: '12', work: 'Concreting and exterior painting', question: '' });
+  const [f, setF] = useState({ notes: '', city: 'Mumbai', propertyType: 'Apartment', areaSqft: '1000', ageYears: '5', projectType: 'Residential G+2 house', areaSqm: '150', budgetInr: '6000000', months: '12', work: 'Concreting and exterior painting', question: '' });
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF(p => ({ ...p, [k]: e.target.value }));
   const current = saved.find(s => s.id === openId) ?? null;
@@ -76,12 +76,13 @@ function Studio() {
   const run = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr('');
     try {
-      const payload: Record<string, unknown> = { tool, notes: f.notes || undefined };
-      if (tool === 'safety' || tool === 'cracks') payload.image = image || undefined;
+      const payload: Record<string, unknown> = { tool };
+      if (f.notes) payload['notes'] = f.notes;
+      if ((tool === 'safety' || tool === 'cracks') && image) payload['image'] = image;
       if (tool === 'valuation') Object.assign(payload, { city: f.city, propertyType: f.propertyType, areaSqft: Number(f.areaSqft), ageYears: Number(f.ageYears) });
       if (tool === 'planning') Object.assign(payload, { projectType: f.projectType, areaSqm: Number(f.areaSqm), budgetInr: Number(f.budgetInr), months: Number(f.months) });
       if (tool === 'weather') Object.assign(payload, { city: f.city, work: f.work });
-      if (tool === 'assistant') payload.question = f.question;
+      if (tool === 'assistant') payload['question'] = f.question;
       const row = await gen({ data: payload as never });
       await qc.invalidateQueries({ queryKey: ['construction'] });
       setOpenId(row.id);
@@ -141,7 +142,7 @@ function Chip({ children, tone }: { children: React.ReactNode; tone?: 'warn' | '
 function Result({ tool, title, input, result }: { tool: string; title: string; input: Record<string, unknown>; result: Record<string, unknown> }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = result as any;
-  const w = input.weather as Weather | null;
+  const w = input['weather'] as Weather | null;
   return <article className="rounded-xl border border-border bg-card p-6">
     <div className="flex flex-wrap items-center gap-2">
       <Chip>{tools.find(t => t.id === tool)?.label}</Chip>
