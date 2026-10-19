@@ -76,12 +76,13 @@ function Studio() {
   const run = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr('');
     try {
-      const payload: Record<string, unknown> = { tool, notes: f.notes || undefined };
-      if (tool === 'safety' || tool === 'cracks') payload.image = image || undefined;
+      const payload: Record<string, unknown> = { tool };
+      if (f.notes) payload['notes'] = f.notes;
+      if ((tool === 'safety' || tool === 'cracks') && image) payload['image'] = image;
       if (tool === 'valuation') Object.assign(payload, { city: f.city, propertyType: f.propertyType, areaSqft: Number(f.areaSqft), ageYears: Number(f.ageYears) });
       if (tool === 'planning') Object.assign(payload, { projectType: f.projectType, areaSqm: Number(f.areaSqm), budgetInr: Number(f.budgetInr), months: Number(f.months) });
       if (tool === 'weather') Object.assign(payload, { city: f.city, work: f.work });
-      if (tool === 'assistant') payload.question = f.question;
+      if (tool === 'assistant') payload['question'] = f.question;
       const row = await gen({ data: payload as never });
       await qc.invalidateQueries({ queryKey: ['construction'] });
       setOpenId(row.id);
