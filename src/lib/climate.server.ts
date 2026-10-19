@@ -40,15 +40,36 @@ const schema = {
   },
 };
 
+// AI provider: Lovable AI Gateway when hosted on Lovable, otherwise a direct
+// OpenAI key (self-hosted). Both expose the same /v1/responses API.
+function aiConfig(): { url: string; headers: Record<string, string>; model: string } {
+  const lovableKey = process.env['LOVABLE_API_KEY'];
+  if (lovableKey) {
+    return {
+      url: 'https://ai.gateway.lovable.dev/v1/responses',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${lovableKey}`, 'Lovable-API-Key': lovableKey, 'X-Lovable-AIG-SDK': 'fetch' },
+      model: 'openai/gpt-6-astra',
+    };
+  }
+  const openaiKey = process.env['OPENAI_API_KEY'];
+  if (openaiKey) {
+    return {
+      url: 'https://api.openai.com/v1/responses',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+      model: 'gpt-4o',
+    };
+  }
+  throw new Error('AI is not configured. Set LOVABLE_API_KEY or OPENAI_API_KEY.');
+}
+
 export async function getAdvice(input: { weather: Weather; roomType: string; areaSqm: number; style: string }): Promise<Advice> {
-  const key = process.env['LOVABLE_API_KEY'];
-  if (!key) throw new Error('AI is not configured.');
+  const ai = aiConfig();
   const { weather: w } = input;
-  const res = await fetch('https://ai.gateway.lovable.dev/v1/responses', {
+  const res = await fetch(ai.url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'Lovable-API-Key': key, 'X-Lovable-AIG-SDK': 'fetch' },
+    headers: ai.headers,
     body: JSON.stringify({
-      model: 'openai/gpt-6-astra', stream: true, store: false, reasoning: { effort: 'low' },
+      model: ai.model, stream: true, store: false, reasoning: { effort: 'low' },
       text: { format: { type: 'json_schema', name: 'interior_advice', strict: true, schema } },
       input: [
         { role: 'system', content: 'You are an interior designer for Indian homes. Give practical, climate-aware interior and furniture advice. Furniture must fit the given floor area (metric sizes). Prices in INR ranges from typical Indian retail. 4-6 materials, 5-7 furniture items, 4-5 colours with hex, 3-5 things to avoid, 3-5 layout tips. Keep each "why" to one sentence.' },

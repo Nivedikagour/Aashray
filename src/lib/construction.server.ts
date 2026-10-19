@@ -77,14 +77,35 @@ const systems: Record<ToolId, string> = {
   assistant: 'You are a construction knowledge assistant for Indian sites and homes. Answer the question clearly and practically: a direct answer paragraph, 3-6 actionable steps, and 1-4 cautions or standards notes (mention relevant IS codes only when confident).',
 };
 
+// AI provider: Lovable AI Gateway when hosted on Lovable, otherwise a direct
+// OpenAI key (self-hosted). Both expose the same /v1/responses API.
+function aiConfig(): { url: string; headers: Record<string, string>; model: string } {
+  const lovableKey = process.env['LOVABLE_API_KEY'];
+  if (lovableKey) {
+    return {
+      url: 'https://ai.gateway.lovable.dev/v1/responses',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${lovableKey}`, 'Lovable-API-Key': lovableKey, 'X-Lovable-AIG-SDK': 'fetch' },
+      model: 'openai/gpt-6-astra',
+    };
+  }
+  const openaiKey = process.env['OPENAI_API_KEY'];
+  if (openaiKey) {
+    return {
+      url: 'https://api.openai.com/v1/responses',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+      model: 'gpt-4o',
+    };
+  }
+  throw new Error('AI is not configured. Set LOVABLE_API_KEY or OPENAI_API_KEY.');
+}
+
 async function callAI(tool: ToolId, userContent: ContentPart[]): Promise<Record<string, unknown>> {
-  const key = process.env['LOVABLE_API_KEY'];
-  if (!key) throw new Error('AI is not configured.');
-  const res = await fetch('https://ai.gateway.lovable.dev/v1/responses', {
+  const ai = aiConfig();
+  const res = await fetch(ai.url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, 'Lovable-API-Key': key, 'X-Lovable-AIG-SDK': 'fetch' },
+    headers: ai.headers,
     body: JSON.stringify({
-      model: 'openai/gpt-6-astra', stream: true, store: false, reasoning: { effort: 'low' },
+      model: ai.model, stream: true, store: false, reasoning: { effort: 'low' },
       text: { format: { type: 'json_schema', name: `construction_${tool}`, strict: true, schema: schemas[tool] } },
       input: [
         { role: 'system', content: systems[tool] },
