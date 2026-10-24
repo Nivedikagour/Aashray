@@ -5,7 +5,7 @@ import { getAdvice, getWeather } from './climate.server';
 
 export const generateSuggestion = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({
+  .validator((d) => z.object({
     city: z.string().trim().min(2).max(80),
     roomType: z.string().min(2).max(40),
     areaSqm: z.number().min(2).max(2000),
@@ -32,7 +32,7 @@ export const listSuggestions = createServerFn({ method: 'GET' })
 
 export const deleteSuggestion = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .validator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from('climate_suggestions').delete().eq('id', data.id);
     if (error) throw new Error(error.message);

@@ -77,71 +77,24 @@ const systems: Record<ToolId, string> = {
   assistant: 'You are a construction knowledge assistant for Indian sites and homes. Answer the question clearly and practically: a direct answer paragraph, 3-6 actionable steps, and 1-4 cautions or standards notes (mention relevant IS codes only when confident).',
 };
 
-// AI provider: Lovable AI Gateway when hosted on Lovable, otherwise a direct
-// OpenAI key (self-hosted). Both expose the same /v1/responses API.
-function aiConfig(): { url: string; headers: Record<string, string>; model: string } {
-  const lovableKey = process.env['LOVABLE_API_KEY'];
-  if (lovableKey) {
-    return {
-      url: 'https://ai.gateway.lovable.dev/v1/responses',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${lovableKey}`, 'Lovable-API-Key': lovableKey, 'X-Lovable-AIG-SDK': 'fetch' },
-      model: 'openai/gpt-6-astra',
-    };
-  }
-  const openaiKey = process.env['OPENAI_API_KEY'];
-  if (openaiKey) {
-    return {
-      url: 'https://api.openai.com/v1/responses',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
-      model: 'gpt-4o',
-    };
-  }
-  throw new Error('AI is not configured. Set LOVABLE_API_KEY or OPENAI_API_KEY.');
-}
+import { runStructuredAI, type AIContentPart } from './ai.server';
 
 async function callAI(tool: ToolId, userContent: ContentPart[]): Promise<Record<string, unknown>> {
-  const ai = aiConfig();
-  const res = await fetch(ai.url, {
-    method: 'POST',
-    headers: ai.headers,
-    body: JSON.stringify({
-      model: ai.model, stream: true, store: false, reasoning: { effort: 'low' },
-      text: { format: { type: 'json_schema', name: `construction_${tool}`, strict: true, schema: schemas[tool] } },
-      input: [
-        { role: 'system', content: systems[tool] },
-        { role: 'user', content: userContent },
-      ],
-    }),
-  });
-  if (!res.ok || !res.body) {
-    const t = await res.text().catch(() => '');
-    if (res.status === 429) throw new Error('Too many requests right now. Please wait a minute and try again.');
-    if (res.status === 402) throw new Error('AI credits have run out for this workspace.');
-    throw new Error(`AI request failed (${res.status}). ${t.slice(0, 200)}`);
-  }
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = '', out = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-      if (!line.startsWith('data:')) continue;
-      const data = line.slice(5).trim();
-      if (!data || data === '[DONE]') continue;
-      try {
-        const ev = JSON.parse(data) as { type?: string; delta?: string; response?: { error?: { message?: string } } };
-        if (ev.type === 'response.output_text.delta' && ev.delta) out += ev.delta;
-        if (ev.type === 'response.failed' || ev.type === 'error') throw new Error(ev.response?.error?.message ?? 'AI could not finish.');
-      } catch (e) { if (e instanceof Error && e.message.startsWith('AI')) throw e; }
+  const parts: AIContentPart[] = userContent.map((c) => {
+    if (c.type === 'input_image') {
+      return { type: 'image', dataUrl: c.image_url };
     }
-  }
-  if (!out) throw new Error('The AI returned no analysis. Please try again.');
-  return JSON.parse(out) as Record<string, unknown>;
+    return { type: 'text', text: c.text };
+  });
+
+  return await runStructuredAI<Record<string, unknown>>({
+    system: systems[tool],
+    parts,
+    schema: schemas[tool],
+    schemaName: `construction_${tool}`,
+  });
 }
+
 
 export type AnalysisInput = {
   tool: ToolId;

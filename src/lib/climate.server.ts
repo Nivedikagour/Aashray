@@ -40,69 +40,18 @@ const schema = {
   },
 };
 
-// AI provider: Lovable AI Gateway when hosted on Lovable, otherwise a direct
-// OpenAI key (self-hosted). Both expose the same /v1/responses API.
-function aiConfig(): { url: string; headers: Record<string, string>; model: string } {
-  const lovableKey = process.env['LOVABLE_API_KEY'];
-  if (lovableKey) {
-    return {
-      url: 'https://ai.gateway.lovable.dev/v1/responses',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${lovableKey}`, 'Lovable-API-Key': lovableKey, 'X-Lovable-AIG-SDK': 'fetch' },
-      model: 'openai/gpt-6-astra',
-    };
-  }
-  const openaiKey = process.env['OPENAI_API_KEY'];
-  if (openaiKey) {
-    return {
-      url: 'https://api.openai.com/v1/responses',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
-      model: 'gpt-4o',
-    };
-  }
-  throw new Error('AI is not configured. Set LOVABLE_API_KEY or OPENAI_API_KEY.');
-}
+import { runStructuredAI } from './ai.server';
 
 export async function getAdvice(input: { weather: Weather; roomType: string; areaSqm: number; style: string }): Promise<Advice> {
-  const ai = aiConfig();
   const { weather: w } = input;
-  const res = await fetch(ai.url, {
-    method: 'POST',
-    headers: ai.headers,
-    body: JSON.stringify({
-      model: ai.model, stream: true, store: false, reasoning: { effort: 'low' },
-      text: { format: { type: 'json_schema', name: 'interior_advice', strict: true, schema } },
-      input: [
-        { role: 'system', content: 'You are an interior designer for Indian homes. Give practical, climate-aware interior and furniture advice. Furniture must fit the given floor area (metric sizes). Prices in INR ranges from typical Indian retail. 4-6 materials, 5-7 furniture items, 4-5 colours with hex, 3-5 things to avoid, 3-5 layout tips. Keep each "why" to one sentence.' },
-        { role: 'user', content: `City: ${w.city}, ${w.region}, ${w.country}. Climate: ${w.climate}. Now ${w.temp}°C, humidity ${w.humidity}%. Next 7 days: ${w.minTemp7d}–${w.maxTemp7d}°C, ${w.rainMm7d} mm rain. Room: ${input.roomType}, ${input.areaSqm} m². Preferred style: ${input.style}.` },
-      ],
-    }),
+  const system = 'You are an interior designer for Indian homes. Give practical, climate-aware interior and furniture advice. Furniture must fit the given floor area (metric sizes). Prices in INR ranges from typical Indian retail. 4-6 materials, 5-7 furniture items, 4-5 colours with hex, 3-5 things to avoid, 3-5 layout tips. Keep each "why" to one sentence.';
+  const userPrompt = `City: ${w.city}, ${w.region}, ${w.country}. Climate: ${w.climate}. Now ${w.temp}°C, humidity ${w.humidity}%. Next 7 days: ${w.minTemp7d}–${w.maxTemp7d}°C, ${w.rainMm7d} mm rain. Room: ${input.roomType}, ${input.areaSqm} m². Preferred style: ${input.style}.`;
+
+  return await runStructuredAI<Advice>({
+    system,
+    userPrompt,
+    schema,
+    schemaName: 'interior_advice',
   });
-  if (!res.ok || !res.body) {
-    const t = await res.text().catch(() => '');
-    if (res.status === 429) throw new Error('Too many requests right now. Please wait a minute and try again.');
-    if (res.status === 402) throw new Error('AI credits have run out for this workspace.');
-    throw new Error(`AI request failed (${res.status}). ${t.slice(0, 200)}`);
-  }
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = '', out = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-      if (!line.startsWith('data:')) continue;
-      const data = line.slice(5).trim();
-      if (!data || data === '[DONE]') continue;
-      try {
-        const ev = JSON.parse(data) as { type?: string; delta?: string; response?: { error?: { message?: string } } };
-        if (ev.type === 'response.output_text.delta' && ev.delta) out += ev.delta;
-        if (ev.type === 'response.failed' || ev.type === 'error') throw new Error(ev.response?.error?.message ?? 'AI could not finish.');
-      } catch (e) { if (e instanceof Error && e.message.startsWith('AI')) throw e; }
-    }
-  }
-  if (!out) throw new Error('The AI returned no suggestions. Please try again.');
-  return JSON.parse(out) as Advice;
 }
+

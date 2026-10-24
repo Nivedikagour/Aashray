@@ -10,9 +10,9 @@ import type { Weather } from '@/lib/climate.server';
 
 export const Route = createFileRoute('/construction')({
   head: () => ({ meta: [
-    { title: 'Construction intelligence · SpaceCraft AI' },
+    { title: 'Construction intelligence · Aashray AI' },
     { name: 'description', content: 'AI-powered site safety checks, crack analysis, property valuation, project planning and weather-aware advisory for construction.' },
-    { property: 'og:title', content: 'Construction intelligence · SpaceCraft AI' },
+    { property: 'og:title', content: 'Construction intelligence · Aashray AI' },
     { property: 'og:description', content: 'Multimodal AI decision support for construction planning, execution and monitoring.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary_large_image' },
@@ -42,18 +42,28 @@ function ConstructionPage() {
     <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground"><Building2 size={13} className="text-clay" /> Construction intelligence</div>
     <h1 className="font-display text-[28px] font-semibold">Decide with data, not guesswork.</h1>
     <p className="mt-1.5 max-w-2xl text-[13px] text-muted-foreground">Multimodal AI for planning, execution and monitoring — analyze site photos, cracks, budgets and weather, and keep every analysis saved to your account.</p>
-    {signedIn === null ? <p className="mt-6 text-sm text-muted-foreground">Loading…</p>
-      : !signedIn ? <section className="mt-7 rounded-xl border border-border bg-card p-6"><HardHat className="mb-3 text-primary" /><h2 className="text-lg font-semibold">Sign in to run analyses</h2><p className="mt-1 text-sm text-muted-foreground">Your reports are saved privately to your account so you can revisit them anytime.</p><Button asChild className="mt-4"><Link to="/auth">Sign in to start</Link></Button></section>
-      : <Studio />}
+    {signedIn === false && (
+      <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 p-3.5 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <HardHat size={16} className="text-primary shrink-0" />
+          <span><strong>Guest mode active:</strong> You can test all 6 multimodal AI tools below. Sign in to save reports permanently.</span>
+        </div>
+        <Button asChild size="sm" variant="outline" className="h-7 text-xs shrink-0">
+          <Link to="/auth">Sign in</Link>
+        </Button>
+      </div>
+    )}
+    <Studio isGuest={signedIn === false} />
   </div>;
 }
 
-function Studio() {
+function Studio({ isGuest = false }: { isGuest?: boolean }) {
   const qc = useQueryClient();
   const list = useServerFn(listAnalyses);
   const gen = useServerFn(generateAnalysis);
   const del = useServerFn(deleteAnalysis);
-  const { data: saved = [] } = useQuery({ queryKey: ['construction'], queryFn: () => list() });
+  const { data: saved = [] } = useQuery({ queryKey: ['construction'], queryFn: () => list(), enabled: !isGuest });
+  const [localRuns, setLocalRuns] = useState<Array<{ id: string; tool: string; title: string; input: Record<string, unknown>; result: Record<string, unknown>; created_at: string }>>([]);
   const [tool, setTool] = useState<ToolId>('safety');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -62,7 +72,8 @@ function Studio() {
   const [f, setF] = useState({ notes: '', city: 'Mumbai', propertyType: 'Apartment', areaSqft: '1000', ageYears: '5', projectType: 'Residential G+2 house', areaSqm: '150', budgetInr: '6000000', months: '12', work: 'Concreting and exterior painting', question: '' });
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF(p => ({ ...p, [k]: e.target.value }));
-  const current = saved.find(s => s.id === openId) ?? null;
+  const allAnalyses = [...localRuns, ...saved];
+  const current = allAnalyses.find(s => s.id === openId) ?? allAnalyses[0] ?? null;
 
   const onFile = (file?: File) => {
     if (!file) return;
@@ -83,8 +94,11 @@ function Studio() {
       if (tool === 'planning') Object.assign(payload, { projectType: f.projectType, areaSqm: Number(f.areaSqm), budgetInr: Number(f.budgetInr), months: Number(f.months) });
       if (tool === 'weather') Object.assign(payload, { city: f.city, work: f.work });
       if (tool === 'assistant') payload['question'] = f.question;
-      const row = await gen({ data: payload as never });
-      await qc.invalidateQueries({ queryKey: ['construction'] });
+      const row = (await gen({ data: payload as never })) as { id: string };
+      setLocalRuns(prev => [row as never, ...prev]);
+      if (!isGuest) {
+        await qc.invalidateQueries({ queryKey: ['construction'] });
+      }
       setOpenId(row.id);
     } catch (x) { setErr(x instanceof Error ? x.message : 'Something went wrong.'); }
     setBusy(false);
@@ -131,7 +145,37 @@ function Studio() {
 
     {current && <Result tool={current.tool} title={current.title} input={current.input as Record<string, unknown>} result={current.result as Record<string, unknown>} />}
 
-    {saved.length > 0 && <div><h3 className="mb-3 text-sm font-semibold">Saved analyses</h3><div className="divide-y divide-border rounded-xl border border-border bg-card">{saved.map(s => <div key={s.id} className="flex items-center gap-3 p-3 text-xs"><Button variant="ghost" className="h-auto flex-1 justify-start p-1 text-left" onClick={() => setOpenId(s.id)}><span className="font-semibold">{s.title}</span><span className="ml-2 text-muted-foreground">{tools.find(t => t.id === s.tool)?.label}</span></Button><span className="text-muted-foreground">{new Date(s.created_at).toLocaleDateString('en-IN')}</span><Button variant="ghost" size="icon" aria-label="Delete analysis" onClick={async () => { await del({ data: { id: s.id } }); qc.invalidateQueries({ queryKey: ['construction'] }); }}><Trash2 size={14} /></Button></div>)}</div></div>}
+    {allAnalyses.length > 0 && (
+      <div>
+        <h3 className="mb-3 text-sm font-semibold">{isGuest ? 'Recent analyses in this session' : 'Saved analyses'}</h3>
+        <div className="divide-y divide-border rounded-xl border border-border bg-card">
+          {allAnalyses.map(s => (
+            <div key={s.id} className="flex items-center gap-3 p-3 text-xs">
+              <Button variant="ghost" className="h-auto flex-1 justify-start p-1 text-left" onClick={() => setOpenId(s.id)}>
+                <span className="font-semibold">{s.title}</span>
+                <span className="ml-2 text-muted-foreground">{tools.find(t => t.id === s.tool)?.label}</span>
+              </Button>
+              <span className="text-muted-foreground">{new Date(s.created_at).toLocaleDateString('en-IN')}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Delete analysis"
+                onClick={async () => {
+                  if (s.id.startsWith('guest-')) {
+                    setLocalRuns(prev => prev.filter(item => item.id !== s.id));
+                  } else {
+                    await del({ data: { id: s.id } });
+                    qc.invalidateQueries({ queryKey: ['construction'] });
+                  }
+                }}
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
   </div>;
 }
 

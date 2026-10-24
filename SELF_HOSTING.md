@@ -1,14 +1,7 @@
-# Running SpaceCraft AI outside Lovable (VS Code + your own backend)
+# Running Aashray AI outside Lovable (VS Code + your own backend)
 
 This guide takes the app from Lovable to your own machine with your own
-Supabase project and your own OpenAI key.
-
-## 1. Get the code
-
-1. In Lovable, connect the project to GitHub (project Settings → GitHub →
-   Connect). Lovable pushes the full source to a repo you own.
-2. In VS Code: `git clone <your-repo-url>` and open the folder.
-3. Install dependencies: `npm install` (or `bun install`).
+Supabase project and your own Gemini or OpenAI key.
 
 ## 2. Create your own Supabase project
 
@@ -65,31 +58,42 @@ create policy "own rows only" on public.construction_analyses
 grant select, insert, delete on public.construction_analyses to authenticated;
 ```
 
-## 4. Configure authentication
+## 4. Configure authentication & Resend Email Confirmations
 
 In your Supabase dashboard → Authentication:
 
-1. **Email**: enable the Email provider (on by default). If you want instant
-   sign-in during development, turn off "Confirm email" — otherwise users must
-   click the confirmation link first.
-2. **Google**: Authentication → Providers → Google → Enable. You need a Google
-   Cloud OAuth client:
-   - Google Cloud Console → APIs & Services → Credentials → Create OAuth client
-     ID (Web application).
-   - Authorized redirect URI: copy the callback URL shown in the Supabase
-     Google provider panel (looks like
-     `https://<your-project>.supabase.co/auth/v1/callback`).
-   - Paste the Client ID and Client Secret into Supabase and save.
-   - In Authentication → URL Configuration, set Site URL to
-     `http://localhost:8080` while developing (change to your domain later).
+1. **Email Provider**:
+   - Enable the Email provider.
+   - Keep "Confirm email" enabled for production verification.
+
+2. **Connecting Resend for Email Confirmations (Recommended)**:
+   You have two complementary options:
+   
+   - **Option A: Native Supabase Custom SMTP with Resend**:
+     In your Supabase Dashboard → **Project Settings** → **Authentication** → **SMTP Settings**:
+     - **Enable Custom SMTP**: Toggle ON
+     - **Sender Email**: `onboarding@resend.dev` (or your verified domain on Resend)
+     - **Sender Name**: `Aashray AI`
+     - **Host**: `smtp.resend.com`
+     - **Port**: `465` (or `587`)
+     - **Minimum TLS Version**: `1.2`
+     - **Username**: `resend`
+     - **Password**: `<YOUR_RESEND_API_KEY>` (starts with `re_...`)
+     When enabled, Supabase routes all confirmation and reset emails securely through Resend.
+
+   - **Option B: Application Direct Resend API**:
+     Add `RESEND_API_KEY=re_...` in your `.env` file. The app's sign-up flow (`/auth`) will dispatch custom-branded, responsive verification and onboarding emails directly using the Resend REST API.
+
+3. **Google OAuth**: Authentication → Providers → Google → Enable.
+   - Authorized redirect URI: `https://<your-project>.supabase.co/auth/v1/callback`.
+   - In Authentication → URL Configuration, set Site URL to `http://localhost:8080`.
 
 ## 5. Set environment variables
 
-Create a `.env` file in the project root (it is git-ignored — never commit
-keys):
+Create or update your `.env` file in the project root:
 
 ```bash
-# Your Supabase project
+# Supabase project
 VITE_SUPABASE_URL=https://<your-project>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=<your anon/publishable key>
 VITE_SUPABASE_PROJECT_ID=<your-project-ref>
@@ -97,20 +101,33 @@ SUPABASE_URL=https://<your-project>.supabase.co
 SUPABASE_PUBLISHABLE_KEY=<your anon/publishable key>
 SUPABASE_PROJECT_ID=<your-project-ref>
 
-# AI — used when LOVABLE_API_KEY is absent (i.e. outside Lovable)
-OPENAI_API_KEY=sk-...
+# Resend API — used for email confirmations during sign up
+# Get an API key at https://resend.com/api-keys
+RESEND_API_KEY=re_123456789...
+RESEND_FROM_EMAIL=Aashray <onboarding@resend.dev>
+
+# Google Gemini API — used for interior designing, budget planning & recommendations, and construction AI
+# Get a free API key at https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=AIzaSy...
+GEMINI_MODEL=gemini-2.5-flash
+
+# Optional: Supabase Service Role Key (allows server to generate admin verification links)
+# SUPABASE_SERVICE_ROLE_KEY=ey...
+
+# Optional: OpenAI API Key (used as fallback if GEMINI_API_KEY is not set)
+# OPENAI_API_KEY=sk-...
 ```
 
-Get an OpenAI key at https://platform.openai.com/api-keys. The app uses the
-Responses API with `gpt-4o` (vision + structured output) when self-hosted.
+### Why Gemini?
+The app uses Gemini 2.5 Flash / 1.5 Flash via Google's Generative AI API:
+- Fast, high-intelligence structured JSON outputs
+- Multimodal site photos & crack analysis
+- Climate-aware interior design suggestions
+- Phase-wise Indian rupee budget planning and cost-saving recommendations
 
 ## 6. One small code note
 
-`src/integrations/supabase/` files are generated for Lovable but work
-standalone because they read the env vars above. If `previewAuthStorage.ts`
-causes issues outside Lovable, replace the `storage:` option in
-`client.ts` with the default (remove the `storage` line) so sessions use
-plain `localStorage`.
+`src/integrations/supabase/` files read the environment variables automatically. If `previewAuthStorage.ts` causes issues outside Lovable, sessions will automatically fall back to standard `localStorage`.
 
 ## 7. Run it
 
@@ -118,15 +135,11 @@ plain `localStorage`.
 npm run dev
 ```
 
-Open http://localhost:8080, sign up, and try Construction AI and the Climate
-Advisor. Weather data comes from Open-Meteo (free, no key needed).
+Open `http://localhost:8080`, test the sign up with Resend email confirmation, try the **AI Budget Planner & Design Studio**, and test **Construction AI**. Weather data comes from Open-Meteo (free, no key needed).
 
 ## What does NOT transfer
 
-- **Existing data**: accounts and saved analyses in the Lovable-hosted backend
-  stay there. Your new Supabase project starts empty.
-- **Lovable AI credits**: outside Lovable the app uses your OpenAI key and
-  bills to your OpenAI account.
-- **Deployment**: `npm run build` produces the production build. The app is a
-  TanStack Start app and can be deployed to Cloudflare Workers, Vercel, or
-  Node hosts — see the TanStack Start deployment docs for your target.
+- **Existing data**: accounts and saved analyses in the Lovable-hosted backend stay there. Your new Supabase project starts fresh.
+- **AI credits**: outside Lovable the app uses your `GEMINI_API_KEY` (with Google's generous free tier) or your OpenAI key.
+- **Deployment**: `npm run build` produces the production build. The app is a TanStack Start app and can be deployed to Cloudflare Workers, Vercel, or Node hosts.
+

@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { CloudSun, Droplets, Loader2, Thermometer, Trash2 } from 'lucide-react';
+import { CloudSun, Droplets, ExternalLink, Loader2, Thermometer, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { deleteSuggestion, generateSuggestion, listSuggestions } from '@/lib/climate.functions';
+import { getOnlineStoreLinks } from '@/lib/stores';
 import type { Advice, Weather } from '@/lib/climate.server';
 
 export function ClimateAdvisor() {
@@ -68,7 +69,39 @@ function Result({ row }: { row: { city: string; room_type: string; area_sqm: num
     <p className="mt-2 text-sm text-muted-foreground">{a.summary}</p>
     <div className="mt-4 flex flex-wrap gap-2">{a.colors.map(c => <span key={c.hex} className="flex items-center gap-2 rounded-full border border-border px-3 py-1 text-[11px]"><span className="h-3 w-3 rounded-full border border-border" style={{ background: c.hex }} />{c.name}</span>)}</div>
     <div className="mt-6 grid gap-6 lg:grid-cols-2">
-      <div><h3 className="mb-2 text-sm font-semibold">Furniture that fits</h3><ul className="space-y-3">{a.furniture.map(f => <li key={f.item} className="text-xs"><div className="flex justify-between gap-3"><strong>{f.item}</strong><span className="text-primary">{f.priceRangeInr}</span></div><div className="text-muted-foreground">{f.size} — {f.why}</div></li>)}</ul></div>
+      <div>
+        <h3 className="mb-2 text-sm font-semibold">Furniture that fits & direct store links</h3>
+        <ul className="space-y-3">
+          {a.furniture.map(f => {
+            const stores = getOnlineStoreLinks(f.item, row.style);
+            return (
+              <li key={f.item} className="rounded-lg border border-border/60 bg-muted/20 p-2.5 text-xs">
+                <div className="flex justify-between gap-3 font-semibold text-foreground">
+                  <span>{f.item}</span>
+                  <span className="text-primary">{f.priceRangeInr}</span>
+                </div>
+                <div className="mt-0.5 text-muted-foreground">{f.size} — {f.why}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-border/40">
+                  <span className="text-[10px] text-muted-foreground font-medium">Buy online:</span>
+                  {stores.slice(0, 4).map(s => (
+                    <a
+                      key={s.id}
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold border ${s.badgeColor} hover:scale-105 transition-transform`}
+                      title={`Search ${f.item} on ${s.name}`}
+                    >
+                      {s.name}
+                      <ExternalLink size={8} />
+                    </a>
+                  ))}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
       <div><h3 className="mb-2 text-sm font-semibold">Climate-smart materials</h3><ul className="space-y-3">{a.materials.map(m => <li key={m.name} className="text-xs"><strong>{m.name}</strong><div className="text-muted-foreground">{m.why}</div></li>)}</ul></div>
       <div><h3 className="mb-2 text-sm font-semibold">Layout tips</h3><ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">{a.layoutTips.map(t => <li key={t}>{t}</li>)}</ul></div>
       <div><h3 className="mb-2 text-sm font-semibold">Avoid</h3><ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">{a.avoid.map(t => <li key={t}>{t}</li>)}</ul></div>
