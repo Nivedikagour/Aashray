@@ -1,7 +1,7 @@
-# Running Aashray AI outside Lovable (VS Code + your own backend)
+# Running Aashray AI (Self-Hosting & Deployment Guide)
 
-This guide takes the app from Lovable to your own machine with your own
-Supabase project and your own Gemini or OpenAI key.
+This guide walks through setting up and deploying Aashray AI on your own machine
+and cloud hosting with your own Supabase project, Gemini AI, and Resend.
 
 ## 2. Create your own Supabase project
 
@@ -125,9 +125,9 @@ The app uses Gemini 2.5 Flash / 1.5 Flash via Google's Generative AI API:
 - Climate-aware interior design suggestions
 - Phase-wise Indian rupee budget planning and cost-saving recommendations
 
-## 6. One small code note
+## 6. Authentication & Storage Note
 
-`src/integrations/supabase/` files read the environment variables automatically. If `previewAuthStorage.ts` causes issues outside Lovable, sessions will automatically fall back to standard `localStorage`.
+`src/integrations/supabase/` files read the environment variables automatically. Sessions use standard browser `localStorage`.
 
 ## 7. Run it
 
@@ -135,11 +135,9 @@ The app uses Gemini 2.5 Flash / 1.5 Flash via Google's Generative AI API:
 npm run dev
 ```
 
-Open `http://localhost:8080`, test the sign up with Resend email confirmation, try the **AI Budget Planner & Design Studio**, and test **Construction AI**. Weather data comes from Open-Meteo (free, no key needed).
+Open `http://localhost:8080`, test sign up with Resend email confirmation, try the **3D Floor Plan Studio**, **AI Budget Planner & Design Studio**, and **Construction AI**. Weather data comes from Open-Meteo (free, no key needed).
 
-## What does NOT transfer
+## Deployment
 
-- **Existing data**: accounts and saved analyses in the Lovable-hosted backend stay there. Your new Supabase project starts fresh.
-- **AI credits**: outside Lovable the app uses your `GEMINI_API_KEY` (with Google's generous free tier) or your OpenAI key.
-- **Deployment**: `npm run build` produces the production build. The app is a TanStack Start app and can be deployed to Cloudflare Workers, Vercel, or Node hosts.
+`npm run build` produces the production build. Aashray AI runs seamlessly on Vercel, Cloudflare, or any modern SSR host.
 

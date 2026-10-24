@@ -1,4 +1,4 @@
-export type AIProvider = 'gemini' | 'openai' | 'lovable';
+export type AIProvider = 'gemini' | 'openai';
 
 export type AIContentPart =
   | { type: 'text'; text: string }
@@ -15,7 +15,6 @@ export type StructuredAIOptions = {
 export function getAIProvider(): AIProvider | null {
   if (process.env['GEMINI_API_KEY'] || process.env['VITE_GEMINI_API_KEY']) return 'gemini';
   if (process.env['OPENAI_API_KEY']) return 'openai';
-  if (process.env['LOVABLE_API_KEY']) return 'lovable';
   return null;
 }
 
@@ -121,7 +120,7 @@ async function callGemini(apiKey: string, options: StructuredAIOptions): Promise
 }
 
 /**
- * Call OpenAI or Lovable API Gateway with responses/chat completions.
+ * Call OpenAI-compatible endpoints with responses/chat completions.
  */
 async function callOpenAICompatible(url: string, headers: Record<string, string>, model: string, options: StructuredAIOptions): Promise<string> {
   const contentList: Array<Record<string, unknown>> = [];
@@ -168,12 +167,11 @@ async function callOpenAICompatible(url: string, headers: Record<string, string>
 }
 
 /**
- * Universal JSON-structured AI caller. Supports GEMINI_API_KEY, OPENAI_API_KEY, and LOVABLE_API_KEY.
+ * Universal JSON-structured AI caller. Supports GEMINI_API_KEY and OPENAI_API_KEY.
  */
 export async function runStructuredAI<T>(options: StructuredAIOptions): Promise<T> {
   const geminiKey = process.env['GEMINI_API_KEY'] || process.env['VITE_GEMINI_API_KEY'];
   const openaiKey = process.env['OPENAI_API_KEY'];
-  const lovableKey = process.env['LOVABLE_API_KEY'];
 
   let rawJson = '';
 
@@ -184,17 +182,6 @@ export async function runStructuredAI<T>(options: StructuredAIOptions): Promise<
       'https://api.openai.com/v1/chat/completions',
       { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
       process.env['OPENAI_MODEL'] || 'gpt-4o',
-      options,
-    );
-  } else if (lovableKey) {
-    rawJson = await callOpenAICompatible(
-      'https://ai.gateway.lovable.dev/v1/chat/completions',
-      {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${lovableKey}`,
-        'Lovable-API-Key': lovableKey,
-      },
-      'openai/gpt-4o',
       options,
     );
   } else {

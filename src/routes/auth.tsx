@@ -4,7 +4,6 @@ import { useServerFn } from '@tanstack/react-start';
 import { AlertCircle, Box, CheckCircle2, Mail, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable/index';
 import { getSystemConfigStatus, sendSignupConfirmationWithResend } from '@/lib/auth.functions';
 
 export const Route = createFileRoute('/auth')({
@@ -138,13 +137,16 @@ function AuthPage() {
   };
 
   const google = async () => {
-    const r = await lovable.auth.signInWithOAuth('google', { redirect_uri: window.location.origin });
-    if (r.error) {
-      setMsg({ text: r.error.message, type: 'error' });
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      setMsg({ text: error.message, type: 'error' });
       return;
     }
-    if (r.redirected) return;
-    navigate({ to: '/' });
   };
 
   return (

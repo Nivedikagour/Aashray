@@ -75,7 +75,8 @@ function Dashboard() {
     setNotice('Signed out of your session.');
   };
 
-  const rawName = (user?.user_metadata?.full_name || user?.user_metadata?.name || (user?.email ? user.email.split('@')[0] : '')) as string;
+  const meta = user?.user_metadata as Record<string, unknown> | undefined;
+  const rawName = ((meta?.['full_name'] || meta?.['name'] || (user?.email ? user.email.split('@')[0] : '')) || '') as string;
   const displayName = rawName ? rawName.charAt(0).toUpperCase() + rawName.slice(1) : (user ? 'Homeowner' : '');
   const initials = rawName ? rawName.split(' ').map((n: string) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() : (user ? 'U' : 'G');
 

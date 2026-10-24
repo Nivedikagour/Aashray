@@ -331,80 +331,133 @@ export function FloorPlanStudio() {
               Room-by-Room Interior Layout & Furniture Shopping Links
             </h4>
 
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2">
               {result.rooms.map((room) => (
                 <div
                   key={room.roomName}
-                  className="rounded-xl border border-border bg-card p-5 shadow-sm"
+                  className="overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/20"
                 >
-                  <div className="flex items-center justify-between">
-                    <h5 className="font-semibold text-sm text-foreground">{room.roomName}</h5>
-                    <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-                      {room.dimensions}
-                    </span>
-                  </div>
+                  {/* Visual Room Concept Image Banner */}
+                  {room.imageUrl && (
+                    <div className="relative mb-4 h-48 w-full overflow-hidden rounded-lg border border-border bg-muted group">
+                      <img
+                        src={room.imageUrl}
+                        alt={`${room.roomName} ${style} concept`}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+                      <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+                        <div>
+                          <span className="rounded bg-black/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/90 backdrop-blur-sm">
+                            {style} Interior
+                          </span>
+                          <h5 className="mt-1 font-bold text-base text-white drop-shadow-sm">{room.roomName}</h5>
+                        </div>
+                        <span className="rounded bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white/90 backdrop-blur-sm">
+                          {room.dimensions}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {!room.imageUrl && (
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-semibold text-sm text-foreground">{room.roomName}</h5>
+                      <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                        {room.dimensions}
+                      </span>
+                    </div>
+                  )}
 
                   <p className="mt-1 text-xs text-muted-foreground">{room.zoning}</p>
 
-                  {/* Color Palette */}
-                  <div className="mt-3 flex items-center gap-1.5">
-                    <span className="text-[10px] font-medium text-muted-foreground">Palette:</span>
-                    {room.colorPalette.map((c) => (
-                      <span
-                        key={c.hex}
-                        className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px]"
-                      >
+                  {/* Color Palette & Visual Swatches */}
+                  <div className="mt-3.5 border-t border-border/60 pt-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Color Palette & Finish Scheme
+                    </span>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {room.colorPalette.map((c) => (
                         <span
-                          className="h-2.5 w-2.5 rounded-full border border-border"
-                          style={{ backgroundColor: c.hex }}
-                        />
-                        {c.name}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Materials & Lighting */}
-                  <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
-                    <div>
-                      <strong>Materials:</strong> {room.materialsAndFinishes}
-                    </div>
-                    <div>
-                      <strong>Lighting:</strong> {room.lightingStrategy}
+                          key={c.hex}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium"
+                        >
+                          <span
+                            className="h-3 w-3 rounded-full border border-border/80 shadow-xs shrink-0"
+                            style={{ backgroundColor: c.hex }}
+                          />
+                          <span className="font-semibold text-foreground">{c.name}</span>
+                          {c.role && <span className="text-[9px] text-muted-foreground">({c.role})</span>}
+                        </span>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Recommended Furniture with Store Links */}
+                  {/* Materials & Lighting Strategy */}
+                  <div className="mt-3 space-y-1.5 rounded-lg bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
+                    <div>
+                      <strong className="text-foreground">Materials & Finishes:</strong> {room.materialsAndFinishes}
+                    </div>
+                    <div>
+                      <strong className="text-foreground">Lighting Strategy:</strong> {room.lightingStrategy}
+                    </div>
+                  </div>
+
+                  {/* Recommended Furniture with Product Images & Direct Store Links */}
                   <div className="mt-4 border-t border-border pt-3">
-                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Furniture & Fixture Recommendations
+                    <div className="mb-2.5 flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Furniture & Fixtures with Real Stores
+                      </span>
+                      <span className="text-[9px] text-primary font-semibold">Images & Live Links</span>
                     </div>
-                    <div className="space-y-2.5">
+                    <div className="space-y-3">
                       {room.furniture.map((f, fIdx) => (
-                        <div key={fIdx} className="rounded-lg bg-muted/30 p-2.5 text-xs">
-                          <div className="flex justify-between font-semibold text-foreground">
-                            <span>{f.item}</span>
-                            <span className="text-primary">{f.estPriceInr}</span>
-                          </div>
-                          <div className="mt-0.5 text-[11px] text-muted-foreground">
-                            {f.placement} • {f.size}
-                          </div>
+                        <div
+                          key={fIdx}
+                          className="flex gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-xs transition-all hover:border-primary/30 hover:bg-muted/40"
+                        >
+                          {f.imageUrl && (
+                            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                              <img
+                                src={f.imageUrl}
+                                alt={f.item}
+                                className="h-full w-full object-cover transition-transform duration-300 hover:scale-110"
+                                loading="lazy"
+                              />
+                            </div>
+                          )}
+                          <div className="flex min-w-0 flex-1 flex-col justify-between">
+                            <div>
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="font-bold text-foreground text-xs leading-snug">{f.item}</span>
+                                <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-bold text-primary text-[10px]">
+                                  {f.estPriceInr}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[11px] text-muted-foreground leading-normal">
+                                {f.placement} • <span className="font-medium text-foreground/80">{f.size}</span>
+                              </p>
+                            </div>
 
-                          {/* Online store links */}
-                          <div className="mt-2 flex flex-wrap items-center gap-1 pt-1.5 border-t border-border/40">
-                            <span className="text-[9px] text-muted-foreground font-semibold">Buy online:</span>
-                            {f.stores.slice(0, 3).map((st) => (
-                              <a
-                                key={st.id}
-                                href={st.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold border ${st.badgeColor} hover:scale-105 transition-transform`}
-                                title={`Search ${f.item} on ${st.name}`}
-                              >
-                                {st.name}
-                                <ExternalLink size={8} />
-                              </a>
-                            ))}
+                            {/* Online Store Direct Links */}
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-2">
+                              <span className="text-[9px] font-semibold text-muted-foreground">Buy online:</span>
+                              {f.stores.slice(0, 3).map((st) => (
+                                <a
+                                  key={st.id}
+                                  href={st.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[9px] font-semibold border ${st.badgeColor} hover:scale-105 transition-transform shadow-2xs`}
+                                  title={`Search ${f.item} on ${st.name}`}
+                                >
+                                  {st.name}
+                                  <ExternalLink size={8} />
+                                </a>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       ))}
